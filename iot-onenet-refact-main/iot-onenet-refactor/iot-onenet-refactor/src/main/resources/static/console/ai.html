@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 病虫害识别</title>
+    <style>
+        :root {
+            --panel: rgba(11, 22, 40, 0.88);
+            --line: rgba(152, 184, 228, 0.16);
+            --text: #eef6ff;
+            --muted: #9fb3c8;
+            --accent: #ffcc73;
+            --accent-2: #6ee7c4;
+            --danger: #ff7d7d;
+            --radius: 22px;
+            --shadow: 0 18px 70px rgba(0, 0, 0, 0.34);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at 15% 15%, rgba(255, 204, 115, 0.18), transparent 28%),
+                radial-gradient(circle at 80% 0%, rgba(110, 231, 196, 0.13), transparent 30%),
+                linear-gradient(160deg, #05101b 0%, #0b1727 56%, #10213a 100%);
+            padding: 28px;
+        }
+
+        .shell {
+            max-width: 1340px;
+            margin: 0 auto;
+            display: grid;
+            gap: 20px;
+        }
+
+        .topbar,
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(16px);
+        }
+
+        .topbar {
+            padding: 18px 22px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .topbar h1 { margin: 0 0 6px; font-size: 28px; }
+        .topbar p { margin: 0; color: var(--muted); }
+
+        .actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .actions a,
+        .actions button {
+            border: 0;
+            border-radius: 999px;
+            padding: 10px 18px;
+            text-decoration: none;
+            background: linear-gradient(135deg, var(--accent), #ffe1a3);
+            color: #16120a;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .actions .secondary {
+            background: rgba(255,255,255,0.08);
+            color: var(--text);
+            border: 1px solid var(--line);
+        }
+
+        .panel { padding: 22px; }
+
+        .hero {
+            display: grid;
+            grid-template-columns: 1.1fr 0.9fr;
+            gap: 20px;
+        }
+
+        .hero h2 {
+            margin: 0 0 12px;
+            font-size: 26px;
+        }
+
+        .hero p {
+            color: var(--muted);
+            line-height: 1.7;
+        }
+
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.08);
+            margin-bottom: 16px;
+            font-size: 13px;
+        }
+
+        .chip.high { color: var(--danger); background: rgba(255, 125, 125, 0.14); }
+        .chip.mid { color: var(--accent); background: rgba(255, 204, 115, 0.14); }
+        .chip.low { color: var(--accent-2); background: rgba(110, 231, 196, 0.14); }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-top: 18px;
+        }
+
+        .stat {
+            padding: 16px;
+            border-radius: 18px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .stat span {
+            display: block;
+            color: var(--muted);
+            font-size: 13px;
+            margin-bottom: 6px;
+        }
+
+        .stat strong {
+            font-size: 22px;
+        }
+
+        .detection-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+        }
+
+        .detection-card,
+        .history-row {
+            padding: 18px;
+            border-radius: 18px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .detection-card h3,
+        .history-row h3 {
+            margin: 0 0 10px;
+            font-size: 18px;
+        }
+
+        .detection-card p,
+        .history-row p {
+            margin: 6px 0;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        .history {
+            display: grid;
+            gap: 14px;
+        }
+
+        .empty {
+            color: var(--muted);
+            text-align: center;
+            padding: 40px 0;
+        }
+
+        code {
+            color: var(--accent-2);
+            font-family: Consolas, monospace;
+        }
+
+        @media (max-width: 1080px) {
+            .hero,
+            .detection-grid,
+            .stats { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+<div class="shell">
+    <section class="topbar">
+        <div>
+            <h1>AI 病虫害识别</h1>
+            <p>接收 RK3568 转发的 <code>AI_DETECTIONS</code>，在 Java 端保留最新结果和历史记录。</p>
+        </div>
+        <div class="actions">
+            <a href="/console/index.html" class="secondary">返回控制台</a>
+            <button id="refresh-btn" type="button">立即刷新</button>
+        </div>
+    </section>
+
+    <section class="hero">
+        <article class="panel">
+            <div class="chip low" id="latest-risk-chip">正在读取 AI 状态...</div>
+            <h2 id="latest-summary">等待 AI 检测结果</h2>
+            <p id="latest-desc">边缘侧一旦通过 <code>POST /api/edge/ai-detections</code> 送达结果，控制台会立即在这里展示。</p>
+            <div class="stats">
+                <div class="stat"><span>设备 ID</span><strong id="latest-device">--</strong></div>
+                <div class="stat"><span>流标识</span><strong id="latest-stream">--</strong></div>
+                <div class="stat"><span>目标数</span><strong id="latest-count">--</strong></div>
+                <div class="stat"><span>时间戳</span><strong id="latest-time">--</strong></div>
+            </div>
+        </article>
+        <article class="panel">
+            <h2>当前帧明细</h2>
+            <div id="latest-detail" class="empty">暂无检测目标</div>
+        </article>
+    </section>
+
+    <section class="panel">
+        <h2 style="margin-top:0;">历史记录</h2>
+        <div id="history-list" class="history">
+            <div class="empty">暂无历史记录</div>
+        </div>
+    </section>
+</div>
+
+<script>
+    async function guardLogin() {
+        try {
+            const resp = await fetch('/api/check-login', { cache: 'no-store' });
+            const json = await resp.json();
+            if (!json.loggedIn) {
+                window.location.href = '/login.html';
+                return false;
+            }
+            return true;
+        } catch (error) {
+            window.location.href = '/login.html';
+            return false;
+        }
+    }
+
+    function riskClass(level) {
+        if (level === '高' || level === '极高') return 'high';
+        if (level === '中') return 'mid';
+        return 'low';
+    }
+
+    function formatTime(timestamp) {
+        if (!timestamp) return '--';
+        return new Date(timestamp).toLocaleString();
+    }
+
+    function renderLatest(item) {
+        const chip = document.getElementById('latest-risk-chip');
+        const summaryEl = document.getElementById('latest-summary');
+        const descEl = document.getElementById('latest-desc');
+        const detailEl = document.getElementById('latest-detail');
+
+        if (!item) {
+            chip.className = 'chip low';
+            chip.textContent = '尚未收到 AI 结果';
+            summaryEl.textContent = '等待 AI 检测结果';
+            descEl.textContent = '当前没有检测历史。你可以通过边缘端转发或直接向接口发送 JSON 来验证页面。';
+            document.getElementById('latest-device').textContent = '--';
+            document.getElementById('latest-stream').textContent = '--';
+            document.getElementById('latest-count').textContent = '--';
+            document.getElementById('latest-time').textContent = '--';
+            detailEl.className = 'empty';
+            detailEl.innerHTML = '暂无检测目标';
+            return;
+        }
+
+        chip.className = `chip ${riskClass(item.overallRiskLevel)}`;
+        chip.textContent = `最高风险：${item.overallRiskLevel || '未知'}`;
+        summaryEl.textContent = item.summary || '已接收 AI 结果';
+        descEl.textContent = item.empty
+            ? '当前帧未检测到病虫害目标。'
+            : `该结果来自设备 ${item.deviceId || '--'}，流 ${item.stream || '--'}，画面尺寸 ${item.imageWidth || '--'} x ${item.imageHeight || '--'}。`;
+        document.getElementById('latest-device').textContent = item.deviceId || '--';
+        document.getElementById('latest-stream').textContent = item.stream || '--';
+        document.getElementById('latest-count').textContent = item.detectionCount ?? 0;
+        document.getElementById('latest-time').textContent = formatTime(item.timestampMs);
+
+        if (!item.items || item.items.length === 0) {
+            detailEl.className = 'empty';
+            detailEl.innerHTML = '当前帧没有病虫害目标';
+            return;
+        }
+
+        detailEl.className = 'detection-grid';
+        detailEl.innerHTML = item.items.map(detection => `
+            <article class="detection-card">
+                <h3>${detection.displayName || '未命名目标'}</h3>
+                <p>类别：${detection.category || '--'}</p>
+                <p>风险：${detection.riskLevel || '--'}</p>
+                <p>置信度：${detection.confidence != null ? detection.confidence.toFixed(2) : 'n/a'}</p>
+                <p>建议：${detection.advice || '请人工复核。'}</p>
+                <p>bbox：<code>${JSON.stringify(detection.bbox || [])}</code></p>
+            </article>
+        `).join('');
+    }
+
+    function renderHistory(items) {
+        const el = document.getElementById('history-list');
+        if (!items || items.length === 0) {
+            el.innerHTML = '<div class="empty">暂无历史记录</div>';
+            return;
+        }
+        el.innerHTML = items.map(item => `
+            <article class="history-row">
+                <h3>${item.summary || 'AI 检测记录'}</h3>
+                <p>时间：${formatTime(item.timestampMs)}</p>
+                <p>设备：${item.deviceId || '--'}，流：${item.stream || '--'}，帧号：${item.frameId ?? '--'}</p>
+                <p>目标数：${item.detectionCount ?? 0}，最高风险：${item.overallRiskLevel || '--'}</p>
+            </article>
+        `).join('');
+    }
+
+    async function loadAiData() {
+        const [latestResp, historyResp] = await Promise.all([
+            fetch('/api/edge/ai-detections/latest'),
+            fetch('/api/edge/ai-detections/history?limit=20')
+        ]);
+        const latestJson = await latestResp.json();
+        const historyJson = await historyResp.json();
+        renderLatest(latestJson.data);
+        renderHistory(historyJson.data);
+    }
+
+    document.getElementById('refresh-btn').addEventListener('click', () => {
+        loadAiData().catch(console.error);
+    });
+
+    (async () => {
+        const ok = await guardLogin();
+        if (!ok) return;
+        await loadAiData();
+        setInterval(() => loadAiData().catch(console.error), 5000);
+    })();
+</script>
+</body>
+</html>

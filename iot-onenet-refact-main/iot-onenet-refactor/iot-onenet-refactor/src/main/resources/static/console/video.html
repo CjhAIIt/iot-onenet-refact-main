@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>视频查看</title>
+    <style>
+        :root {
+            --panel: rgba(10, 22, 42, 0.86);
+            --line: rgba(135, 182, 233, 0.18);
+            --text: #eef6ff;
+            --muted: #9bb0c6;
+            --accent: #79e7cf;
+            --radius: 22px;
+            --shadow: 0 18px 70px rgba(0, 0, 0, 0.36);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+            background:
+                radial-gradient(circle at top right, rgba(121, 231, 207, 0.14), transparent 35%),
+                linear-gradient(155deg, #06111b 0%, #0d1a2d 50%, #10233b 100%);
+            color: var(--text);
+            padding: 28px;
+        }
+
+        .shell {
+            max-width: 1320px;
+            margin: 0 auto;
+            display: grid;
+            gap: 20px;
+        }
+
+        .topbar,
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(16px);
+        }
+
+        .topbar {
+            padding: 18px 22px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .topbar h1 { margin: 0 0 6px; font-size: 28px; }
+        .topbar p { margin: 0; color: var(--muted); }
+
+        .actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .actions a,
+        .actions button {
+            border: 0;
+            border-radius: 999px;
+            padding: 10px 18px;
+            text-decoration: none;
+            background: linear-gradient(135deg, var(--accent), #93f0da);
+            color: #07131b;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .actions .secondary {
+            background: rgba(255,255,255,0.08);
+            color: var(--text);
+            border: 1px solid var(--line);
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 360px 1fr;
+            gap: 20px;
+        }
+
+        .panel { padding: 22px; }
+
+        .pill {
+            display: inline-flex;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            background: rgba(121, 231, 207, 0.12);
+            color: var(--accent);
+            font-size: 13px;
+            margin-bottom: 16px;
+        }
+
+        .info-list {
+            display: grid;
+            gap: 12px;
+        }
+
+        .info-item {
+            padding: 14px 16px;
+            border-radius: 16px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .info-item span {
+            display: block;
+            color: var(--muted);
+            font-size: 13px;
+            margin-bottom: 6px;
+        }
+
+        .info-item strong,
+        .info-item a {
+            color: var(--text);
+            font-size: 15px;
+            word-break: break-all;
+        }
+
+        .viewer {
+            display: grid;
+            gap: 18px;
+        }
+
+        iframe {
+            width: 100%;
+            min-height: 720px;
+            border: 0;
+            border-radius: 18px;
+            background: #000;
+        }
+
+        .hint {
+            color: var(--muted);
+            line-height: 1.7;
+        }
+
+        @media (max-width: 1040px) {
+            .layout { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+<div class="shell">
+    <section class="topbar">
+        <div>
+            <h1>实时视频查看</h1>
+            <p>后端只下发播放地址，媒体链路仍由 go2rtc / WebRTC / MSE 直接承载。</p>
+        </div>
+        <div class="actions">
+            <a href="/console/index.html" class="secondary">返回控制台</a>
+            <button id="refresh-btn" type="button">刷新流信息</button>
+        </div>
+    </section>
+
+    <section class="layout">
+        <aside class="panel">
+            <div class="pill" id="stream-status">正在读取流状态...</div>
+            <div class="info-list" id="stream-info"></div>
+        </aside>
+
+        <section class="viewer">
+            <div class="panel">
+                <p class="hint" id="stream-hint">正在加载视频播放页面...</p>
+            </div>
+            <div class="panel">
+                <iframe id="player-frame" allow="autoplay; fullscreen; camera; microphone"></iframe>
+            </div>
+        </section>
+    </section>
+</div>
+
+<script>
+    async function guardLogin() {
+        try {
+            const resp = await fetch('/api/check-login', { cache: 'no-store' });
+            const json = await resp.json();
+            if (!json.loggedIn) {
+                window.location.href = '/login.html';
+                return false;
+            }
+            return true;
+        } catch (error) {
+            window.location.href = '/login.html';
+            return false;
+        }
+    }
+
+    function setStreamStatus(text, ok) {
+        const el = document.getElementById('stream-status');
+        el.textContent = text;
+        el.style.background = ok ? 'rgba(121, 231, 207, 0.12)' : 'rgba(255, 122, 122, 0.14)';
+        el.style.color = ok ? 'var(--accent)' : '#ff7a7a';
+    }
+
+    function item(label, value) {
+        return `<div class="info-item"><span>${label}</span><strong>${value}</strong></div>`;
+    }
+
+    async function loadStream() {
+        const resp = await fetch('/api/video/streams');
+        const json = await resp.json();
+        const stream = (json.data || [])[0];
+        const infoEl = document.getElementById('stream-info');
+        const frame = document.getElementById('player-frame');
+        const hint = document.getElementById('stream-hint');
+
+        if (!stream) {
+            infoEl.innerHTML = item('状态', '未获取到视频流信息');
+            hint.textContent = '当前没有配置可播放的视频流。';
+            setStreamStatus('未配置视频流', false);
+            frame.removeAttribute('src');
+            return;
+        }
+
+        setStreamStatus(stream.available ? '视频流可用' : '视频流不可用', !!stream.available);
+        hint.textContent = `默认流 ${stream.streamId} 已加载。若浏览器 WebRTC 受限，可使用页面中的 MSE 回退模式。`;
+        frame.src = stream.playerUrl || '';
+        infoEl.innerHTML = [
+            item('流标识', stream.streamId || '--'),
+            item('设备 ID', stream.deviceId || '--'),
+            item('显示名称', stream.displayName || '--'),
+            item('播放器地址', stream.playerUrl ? `<a href="${stream.playerUrl}" target="_blank">${stream.playerUrl}</a>` : '--'),
+            item('网关首页', stream.gatewayPageUrl ? `<a href="${stream.gatewayPageUrl}" target="_blank">${stream.gatewayPageUrl}</a>` : '--'),
+            item('播放模式', `${stream.preferredMode || '--'} / ${stream.fallbackMode || '--'}`),
+            item('公网主机', stream.publicHost ? `${stream.publicHost}:${stream.webrtcPort}` : '--'),
+            item('AI 转发', stream.aiResultForwarded ? 'Java 已收到 AI 结果' : 'Java 端暂未收到 AI 结果')
+        ].join('');
+    }
+
+    document.getElementById('refresh-btn').addEventListener('click', () => {
+        loadStream().catch(console.error);
+    });
+
+    (async () => {
+        const ok = await guardLogin();
+        if (!ok) return;
+        await loadStream();
+    })();
+</script>
+</body>
+</html>

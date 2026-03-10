@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>农业边缘控制台</title>
+    <style>
+        :root {
+            --panel: rgba(8, 18, 34, 0.84);
+            --panel-strong: rgba(10, 24, 46, 0.96);
+            --line: rgba(130, 170, 220, 0.18);
+            --text: #eef6ff;
+            --muted: #9bb0c6;
+            --accent: #6be3c1;
+            --accent-2: #ffd36d;
+            --accent-3: #78cbff;
+            --danger: #ff7a7a;
+            --shadow: 0 20px 80px rgba(0, 0, 0, 0.35);
+            --radius: 22px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at top left, rgba(107, 227, 193, 0.16), transparent 35%),
+                radial-gradient(circle at 85% 20%, rgba(255, 211, 109, 0.16), transparent 28%),
+                linear-gradient(160deg, #06111c 0%, #0a1728 55%, #102038 100%);
+            padding: 28px;
+        }
+
+        .shell {
+            max-width: 1320px;
+            margin: 0 auto;
+            display: grid;
+            gap: 22px;
+        }
+
+        .topbar,
+        .hero,
+        .card,
+        .metric-card {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(16px);
+        }
+
+        .topbar {
+            padding: 18px 22px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .brand h1 {
+            margin: 0 0 6px;
+            font-size: 28px;
+        }
+
+        .brand p,
+        .muted {
+            margin: 0;
+            color: var(--muted);
+        }
+
+        .actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .actions a,
+        .actions button,
+        .cta a {
+            border: 0;
+            border-radius: 999px;
+            padding: 10px 18px;
+            font-size: 14px;
+            text-decoration: none;
+            color: #07131c;
+            background: linear-gradient(135deg, var(--accent), #8cead0);
+            cursor: pointer;
+        }
+
+        .actions button.secondary,
+        .cta a.secondary {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text);
+            border: 1px solid var(--line);
+        }
+
+        .hero {
+            padding: 28px;
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 24px;
+        }
+
+        .hero h2 {
+            margin: 0 0 12px;
+            font-size: 34px;
+            line-height: 1.2;
+        }
+
+        .hero p {
+            margin: 0 0 18px;
+            color: var(--muted);
+            line-height: 1.7;
+        }
+
+        .summary {
+            background: var(--panel-strong);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 20px;
+        }
+
+        .summary h4 {
+            margin: 0 0 12px;
+            font-size: 16px;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .summary-grid {
+            display: grid;
+            gap: 12px;
+        }
+
+        .summary-item {
+            padding: 14px 16px;
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .summary-item span {
+            display: block;
+            color: var(--muted);
+            font-size: 13px;
+            margin-bottom: 6px;
+        }
+
+        .summary-item strong {
+            font-size: 17px;
+        }
+
+        .cta {
+            margin-top: 14px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .section-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: end;
+            gap: 20px;
+        }
+
+        .section-head h3 {
+            margin: 0 0 8px;
+            font-size: 24px;
+        }
+
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 18px;
+        }
+
+        .metric-card {
+            padding: 22px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .metric-card::after {
+            content: "";
+            position: absolute;
+            width: 120px;
+            height: 120px;
+            right: -30px;
+            top: -36px;
+            background: radial-gradient(circle, rgba(255,255,255,0.12), transparent 70%);
+        }
+
+        .metric-label {
+            color: var(--muted);
+            font-size: 13px;
+            margin-bottom: 8px;
+        }
+
+        .metric-value {
+            font-size: 36px;
+            font-weight: 700;
+            color: #ffffff;
+        }
+
+        .metric-unit {
+            font-size: 14px;
+            margin-left: 6px;
+            color: var(--muted);
+        }
+
+        .metric-desc {
+            margin-top: 12px;
+            color: var(--muted);
+            line-height: 1.6;
+            font-size: 13px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 18px;
+        }
+
+        .card {
+            padding: 22px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::after {
+            content: "";
+            position: absolute;
+            width: 120px;
+            height: 120px;
+            right: -35px;
+            top: -40px;
+            background: radial-gradient(circle, rgba(255,255,255,0.12), transparent 70%);
+        }
+
+        .card h3 {
+            margin: 0 0 10px;
+            font-size: 20px;
+        }
+
+        .kpi {
+            font-size: 34px;
+            font-weight: 700;
+            margin: 8px 0;
+        }
+
+        .status {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border-radius: 999px;
+            padding: 7px 12px;
+            font-size: 13px;
+            margin-bottom: 14px;
+        }
+
+        .status.ok {
+            background: rgba(107, 227, 193, 0.14);
+            color: var(--accent);
+        }
+
+        .status.warn {
+            background: rgba(255, 211, 109, 0.14);
+            color: var(--accent-2);
+        }
+
+        .status.danger {
+            background: rgba(255, 122, 122, 0.14);
+            color: var(--danger);
+        }
+
+        .meta {
+            display: grid;
+            gap: 10px;
+        }
+
+        .meta-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        .meta-row strong {
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        @media (max-width: 1100px) {
+            .hero,
+            .metrics,
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 960px) {
+            .topbar {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="shell">
+    <section class="topbar">
+        <div class="brand">
+            <h1>农业边缘控制台</h1>
+            <p>先看环境监测，再看视频、AI 病虫害识别和 OneNET 平台日志。</p>
+        </div>
+        <div class="actions">
+            <a href="/preview.html">项目介绍</a>
+            <button class="secondary" id="refresh-btn" type="button">刷新数据</button>
+            <button class="secondary" id="logout-btn" type="button">退出登录</button>
+        </div>
+    </section>
+
+    <section class="hero">
+        <div>
+            <h2>原来的环境监测四项已经并回首页，同时保留新加的视频、AI 和日志功能。</h2>
+            <p>
+                当前首页会持续从 <code>/api/status</code> 获取设备状态，展示温度、湿度、光照和第四路传感数据。
+                如果后端后续补充了 <code>soilHumidity</code> 字段，这里会自动优先显示土壤湿度；在此之前会兼容现有第四路数据。
+            </p>
+            <div class="cta">
+                <a href="/console/video.html">打开视频页</a>
+                <a href="/console/ai.html">打开 AI 页</a>
+                <a href="/console/logs.html" class="secondary">打开日志页</a>
+            </div>
+        </div>
+        <div class="summary">
+            <h4>设备摘要</h4>
+            <div class="summary-grid">
+                <div class="summary-item">
+                    <span>设备名称</span>
+                    <strong id="device-name">--</strong>
+                </div>
+                <div class="summary-item">
+                    <span>设备 ID</span>
+                    <strong id="device-id">--</strong>
+                </div>
+                <div class="summary-item">
+                    <span>最近更新时间</span>
+                    <strong id="updated-at">--</strong>
+                </div>
+                <div class="summary-item">
+                    <span>告警码</span>
+                    <strong id="error-code">--</strong>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <div class="section-head">
+            <div>
+                <h3>环境监测</h3>
+                <p class="muted">恢复原有四个查看卡片，并与当前状态接口保持同步。</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="metrics">
+        <article class="metric-card">
+            <div class="metric-label">温度</div>
+            <div><span class="metric-value" id="temperature-value">--</span><span class="metric-unit" id="temperature-unit">°C</span></div>
+            <div class="metric-desc">环境温度实时值</div>
+        </article>
+        <article class="metric-card">
+            <div class="metric-label">湿度</div>
+            <div><span class="metric-value" id="humidity-value">--</span><span class="metric-unit" id="humidity-unit">%</span></div>
+            <div class="metric-desc">环境相对湿度</div>
+        </article>
+        <article class="metric-card">
+            <div class="metric-label">光照</div>
+            <div><span class="metric-value" id="light-value">--</span><span class="metric-unit" id="light-unit">Lux</span></div>
+            <div class="metric-desc">光照强度监测</div>
+        </article>
+        <article class="metric-card">
+            <div class="metric-label">土壤湿度 / 第四路传感</div>
+            <div><span class="metric-value" id="soil-value">--</span><span class="metric-unit" id="soil-unit">--</span></div>
+            <div class="metric-desc">优先显示 soilHumidity，未提供时回退到现有第四路数据</div>
+        </article>
+    </section>
+
+    <section class="grid">
+        <article class="card">
+            <div class="status ok" id="video-status">视频链路检测中</div>
+            <h3>视频查看</h3>
+            <div class="kpi" id="video-name">--</div>
+            <p class="muted" id="video-url">正在获取播放器地址...</p>
+            <div class="meta">
+                <div class="meta-row"><span>播放模式</span><strong id="video-mode">--</strong></div>
+                <div class="meta-row"><span>公网地址</span><strong id="video-host">--</strong></div>
+                <div class="meta-row"><span>AI 转发状态</span><strong id="video-ai-forward">--</strong></div>
+            </div>
+            <div class="cta">
+                <a href="/console/video.html">进入视频页</a>
+            </div>
+        </article>
+
+        <article class="card">
+            <div class="status warn" id="ai-status">AI 状态检测中</div>
+            <h3>病虫害 AI</h3>
+            <div class="kpi" id="ai-count">--</div>
+            <p class="muted" id="ai-summary">正在等待 AI 检测结果...</p>
+            <div class="meta">
+                <div class="meta-row"><span>设备</span><strong id="ai-device">--</strong></div>
+                <div class="meta-row"><span>流标识</span><strong id="ai-stream">--</strong></div>
+                <div class="meta-row"><span>风险等级</span><strong id="ai-risk">--</strong></div>
+            </div>
+            <div class="cta">
+                <a href="/console/ai.html">进入 AI 页</a>
+            </div>
+        </article>
+
+        <article class="card">
+            <div class="status ok" id="log-status">日志服务检测中</div>
+            <h3>平台日志</h3>
+            <div class="kpi" id="log-count">--</div>
+            <p class="muted" id="log-file">正在读取日志文件信息...</p>
+            <div class="meta">
+                <div class="meta-row"><span>支持类型</span><strong id="log-types">--</strong></div>
+                <div class="meta-row"><span>最近事件</span><strong id="log-latest-type">--</strong></div>
+                <div class="meta-row"><span>最近设备</span><strong id="log-latest-device">--</strong></div>
+            </div>
+            <div class="cta">
+                <a href="/console/logs.html">进入日志页</a>
+            </div>
+        </article>
+    </section>
+</div>
+
+<script>
+    const STATUS_URL = '/api/status';
+
+    async function guardLogin() {
+        try {
+            const resp = await fetch('/api/check-login', { cache: 'no-store' });
+            const json = await resp.json();
+            if (!json.loggedIn) {
+                window.location.href = '/login.html';
+                return false;
+            }
+            return true;
+        } catch (error) {
+            window.location.href = '/login.html';
+            return false;
+        }
+    }
+
+    function setStatus(id, text, level) {
+        const el = document.getElementById(id);
+        el.textContent = text;
+        el.className = `status ${level}`;
+    }
+
+    function setText(id, value, fallback = '--') {
+        document.getElementById(id).textContent = value != null && value !== '' ? value : fallback;
+    }
+
+    function setMetric(prefix, sensor, fallbackUnit) {
+        setText(`${prefix}-value`, sensor && sensor.value != null ? sensor.value : null);
+        setText(`${prefix}-unit`, sensor && sensor.unit ? sensor.unit : fallbackUnit, fallbackUnit);
+    }
+
+    function formatTime(timestamp) {
+        if (!timestamp) {
+            return '--';
+        }
+        return new Date(timestamp).toLocaleString();
+    }
+
+    async function loadOverview() {
+        const [statusResp, videoResp, aiResp, logSummaryResp, logResp] = await Promise.all([
+            fetch(STATUS_URL, { cache: 'no-store' }),
+            fetch('/api/video/streams'),
+            fetch('/api/edge/ai-detections/latest'),
+            fetch('/api/logs/summary'),
+            fetch('/api/logs?limit=1')
+        ]);
+
+        const status = await statusResp.json();
+        const videoJson = await videoResp.json();
+        const aiJson = await aiResp.json();
+        const logSummaryJson = await logSummaryResp.json();
+        const logJson = await logResp.json();
+
+        setText('device-name', status.deviceName);
+        setText('device-id', status.deviceId);
+        setText('updated-at', formatTime(status.updatedAt));
+        setText('error-code', status.error ? status.error.value : null);
+
+        setMetric('temperature', status.temperature, '°C');
+        setMetric('humidity', status.humidity, '%');
+        setMetric('light', status.light, 'Lux');
+
+        const soilSensor = status.soilHumidity || status.mq2 || null;
+        setMetric('soil', soilSensor, soilSensor && soilSensor.unit ? soilSensor.unit : '--');
+
+        const stream = (videoJson.data || [])[0];
+        if (stream) {
+            document.getElementById('video-name').textContent = stream.displayName || stream.streamId || '--';
+            document.getElementById('video-url').textContent = stream.playerUrl || '--';
+            document.getElementById('video-mode').textContent = `${stream.preferredMode || '--'} / ${stream.fallbackMode || '--'}`;
+            document.getElementById('video-host').textContent = stream.publicHost ? `${stream.publicHost}:${stream.webrtcPort}` : '--';
+            document.getElementById('video-ai-forward').textContent = stream.aiResultForwarded ? '已收到 AI 转发' : '尚未收到 AI 转发';
+            setStatus('video-status', stream.available ? '视频流可用' : '视频流不可用', stream.available ? 'ok' : 'danger');
+        }
+
+        const latestAi = aiJson.data;
+        if (latestAi) {
+            document.getElementById('ai-count').textContent = latestAi.detectionCount ?? 0;
+            document.getElementById('ai-summary').textContent = latestAi.summary || '已接收 AI 结果';
+            document.getElementById('ai-device').textContent = latestAi.deviceId || '--';
+            document.getElementById('ai-stream').textContent = latestAi.stream || '--';
+            document.getElementById('ai-risk').textContent = latestAi.overallRiskLevel || '--';
+            const aiDanger = latestAi.overallRiskLevel === '高' || latestAi.overallRiskLevel === '极高';
+            setStatus('ai-status', latestAi.empty ? '未检测到病虫害' : '已检测到病虫害目标',
+                latestAi.empty ? 'ok' : (aiDanger ? 'danger' : 'warn'));
+        } else {
+            document.getElementById('ai-count').textContent = '--';
+            document.getElementById('ai-summary').textContent = '当前还没有收到 AI 检测数据';
+            setStatus('ai-status', '尚未收到 AI 数据', 'warn');
+        }
+
+        const logSummary = logSummaryJson.data || {};
+        const latestLog = (logJson.data || [])[0];
+        document.getElementById('log-count').textContent = logSummary.count ?? 0;
+        document.getElementById('log-file').textContent = logSummary.file || '--';
+        document.getElementById('log-types').textContent = (logSummary.supportedTypes || []).join(', ') || '--';
+        document.getElementById('log-latest-type').textContent = latestLog ? latestLog.type : '--';
+        document.getElementById('log-latest-device').textContent = latestLog ? (latestLog.deviceId || '--') : '--';
+        setStatus('log-status', '日志服务正常', 'ok');
+    }
+
+    document.getElementById('refresh-btn').addEventListener('click', () => {
+        loadOverview().catch(console.error);
+    });
+
+    document.getElementById('logout-btn').addEventListener('click', async () => {
+        await fetch('/api/logout', { method: 'POST' });
+        window.location.href = '/login.html';
+    });
+
+    (async () => {
+        const ok = await guardLogin();
+        if (!ok) return;
+        await loadOverview();
+        setInterval(() => loadOverview().catch(console.error), 3000);
+    })();
+</script>
+</body>
+</html>
