@@ -1,159 +1,207 @@
-[README.md](https://github.com/user-attachments/files/25824471/README.md)
-# IoT OneNET 重构版
+# IoT OneNET Refactor
 
-本项目是一个基于 Spring Boot 3（Java 17）的后端服务，用于对接 OneNET 物联网平台的设备属性接口，并通过 Pulsar 消费设备上报消息，完成状态维护与下行控制（如 LED 开关）。
+基于 Spring Boot 3 和 Java 17 的物联网平台后端，用于接入中国移动 OneNET、消费 Pulsar 设备消息，并提供设备状态、LED 控制、用户登录、平台日志、AI 检测结果和视频流信息接口。
 
-- 核心能力：登录/注册、设备状态查询、LED 下发、Pulsar 消费、消息解密与解析、OneNET OpenAPI 调用、`set_reply` 回填
-- 技术栈：Spring Boot 3、Spring Security（全部放行）、Jackson、Pulsar Client、Fastjson2、Netty
+## 项目概览
 
-**代码入口与关键模块**
-- 应用入口：[IotOnenetApplication](file:///c:/Program%20Files/iot-onenet-refactor/iot-onenet-refactor/src/main/java/com/aurora/iotonenet/IotOnenetApplication.java)
-- Pulsar 启动引导：[PulsarConsumerBootstrap](file:///c:/Program%20Files/iot-onenet-refactor/iot-onenet-refactor/src/main/java/com/aurora/iotonenet/bootstrap/PulsarConsumerBootstrap.java)
-- Pulsar 消费主流程：[IoTPulsarConsumer](file:///c:/Program%20Files/iot-onenet-refactor/iot-onenet-refactor/src/main/java/com/aurora/iotonenet/infrastructure/pulsar/consumer/IoTPulsarConsumer.java)
-- OneNET API 调用：[OneNetApiService](file:///c:/Program%20Files/iot-onenet-refactor/iot-onenet-refactor/src/main/java/com/aurora/iotonenet/infrastructure/onenet/OneNetApiService.java)
-- 配置绑定：[OneNetProperties](file:///c:/Program%20Files/iot-onenet-refactor/iot-onenet-refactor/src/main/java/com/aurora/iotonenet/config/OneNetProperties.java) 与 [OneNetPropertiesConfig](file:///c:/Program%20Files/iot-onenet-refactor/iot-onenet-refactor/src/main/java/com/aurora/iotonenet/config/OneNetPropertiesConfig.java)
-- 安全放行策略：[SecurityConfig](file:///c:/Program%20Files/iot-onenet-refactor/iot-onenet-refactor/src/main/java/com/aurora/iotonenet/config/SecurityConfig.java)
+- OneNET 设备属性查询与下发
+- Pulsar 消息消费、解析与状态落内存
+- 登录、注册、会话检查、退出登录
+- 平台日志查询与摘要统计
+- AI 检测结果接收、最新结果和历史记录查询
+- 视频流配置查询，配合前端控制台页面展示
 
-## 环境要求
+## 目录结构
+
+仓库根目录下实际代码位于：
+
+```text
+iot-onenet-refact-main/
+└─ iot-onenet-refactor/
+   └─ iot-onenet-refactor/
+```
+
+其中：
+
+- `src/main/java`：Java 源码
+- `src/main/resources/application.yml`：Spring Boot 配置
+- `src/main/resources/static`：静态页面
+- `logs/platform-events.jsonl`：平台日志文件
+
+## 技术栈
+
+- Java 17
+- Spring Boot 3.3.5
+- Spring Web
+- Spring Security
+- Pulsar Client 3.2.4
+- MySQL Connector/J
+- Fastjson2
+- Netty
+
+## 运行要求
+
 - JDK 17+
 - Maven 3.9+
-- 可访问 OneNET OpenAPI 与 Pulsar 服务的网络
-- Windows/macOS/Linux 均可运行
+- 可访问 OneNET OpenAPI
+- 可访问 OneNET Pulsar 服务
 
-## 快速开始
-- 克隆/下载代码后，按需修改 `src/main/resources/application.yml` 的占位配置（见下文“配置说明”）
-- 启动服务
+## 核心配置
+
+项目主配置文件是 `src/main/resources/application.yml`。生产环境不要把敏感信息直接写死在仓库里，建议通过环境变量覆盖。
+
+常用配置项：
+
+- `server.port`：服务端口，当前默认 `8085`
+- `ONENET_PRODUCT_ID`
+- `ONENET_AUTHORIZATION`
+- `ONENET_PULSAR_ACCESS_ID`
+- `ONENET_PULSAR_SECRET_KEY`
+- `ONENET_PULSAR_SUBSCRIPTION_NAME`
+- `APP_LOGIN_USERNAME`
+- `APP_LOGIN_PASSWORD`
+- `APP_USER_STORE_MODE`：`memory` 或 `mysql`
+- `APP_USER_STORE_JDBC_URL`
+- `APP_USER_STORE_USERNAME`
+- `APP_USER_STORE_PASSWORD`
+- `APP_LOGS_FILE`
+
+示例：
+
+```powershell
+$env:ONENET_PRODUCT_ID="your-product-id"
+$env:ONENET_AUTHORIZATION="your-authorization"
+$env:ONENET_PULSAR_ACCESS_ID="your-access-id"
+$env:ONENET_PULSAR_SECRET_KEY="your-secret-key"
+$env:ONENET_PULSAR_SUBSCRIPTION_NAME="your-subscription"
+$env:APP_LOGIN_USERNAME="admin"
+$env:APP_LOGIN_PASSWORD="change-me"
+```
+
+如果启用 MySQL 用户存储，还需要：
+
+```powershell
+$env:APP_USER_STORE_MODE="mysql"
+$env:APP_USER_STORE_JDBC_URL="jdbc:mysql://127.0.0.1:3306/iot_platform?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8"
+$env:APP_USER_STORE_USERNAME="db_user"
+$env:APP_USER_STORE_PASSWORD="db_password"
+```
+
+## 本地启动
+
+进入实际 Maven 模块目录：
+
+```bash
+cd iot-onenet-refactor/iot-onenet-refactor
+```
+
+开发模式运行：
 
 ```bash
 mvn spring-boot:run
-# 或
+```
+
+打包运行：
+
+```bash
 mvn clean package -DskipTests
 java -jar target/iot-onenet-refactor-1.0.0.jar
 ```
 
-- 默认端口：`8082`，服务启动后会自动尝试打开登录页 `http://127.0.0.1:8082/login.html`（见 IoTPulsarConsumer 的 `tryOpenDashboard`）
-- 健康检查：`GET /api/health` 返回 `ok`
+启动后默认访问：
 
-## 配置说明
-项目配置集中在 `application.yml`，并通过 `@ConfigurationProperties(prefix = "onenet")` 绑定到 [OneNetProperties](file:///c:/Program%20Files/iot-onenet-refactor/iot-onenet-refactor/src/main/java/com/aurora/iotonenet/config/OneNetProperties.java)。
+- 登录页：`http://127.0.0.1:8085/login.html`
+- 控制台首页：`http://127.0.0.1:8085/console/index.html`
+- 健康检查：`GET /api/health`
 
-请务必将密钥、授权信息放在安全的外部配置中，避免提交到代码仓库。可通过环境变量、命令行参数或外部 `application.yml` 覆盖。
+## 主要接口
 
-示例（占位符，请替换为你自己的值）：
+认证相关：
 
-```yaml
-server:
-  port: 8082
+- `POST /api/login`
+- `POST /api/register`
+- `GET /api/check-login`
+- `POST /api/logout`
 
-onenet:
-  product-id: YOUR_PRODUCT_ID
-  authorization: YOUR_ONENET_AUTH_HEADER
-  property-set-url: https://iot-api.heclouds.com/thingmodel/set-device-property
-  property-get-url: https://iot-api.heclouds.com/thingmodel/query-device-property
-  timeout-ms: 10000
+设备相关：
 
-  pulsar:
-    brokerUrl: pulsar+ssl://iot-north-mq.heclouds.com:6651/
-    access-id: YOUR_PULSAR_ACCESS_ID
-    secret-key: YOUR_PULSAR_SECRET_KEY
-    subscription-name: YOUR_SUBSCRIPTION_NAME
-    autoOpenDashboard: true
+- `GET /api/status`
+- `POST /api/ops/led`
+- `GET /api/health`
 
-app:
-  login:
-    username: YOUR_USERNAME
-    password: YOUR_PASSWORD
-```
+平台日志：
 
-覆盖方式示例：
-- 通过 JVM 启动参数：`java -jar app.jar --onenet.product-id=xxx --onenet.pulsar.access-id=xxx`
-- 通过环境变量：`ONENET_PRODUCT_ID=xxx` 等（需配合 Spring Boot 外部化配置）
+- `GET /api/logs`
+- `GET /api/logs/summary`
 
-## 接口与示例
-- 登录/注册相关（允许跨域）
-  - `POST /api/login`，[LoginController](file:///c:/Program%20Files/iot-onenet-refactor/iot-onenet-refactor/src/main/java/com/aurora/iotonenet/api/controller/LoginController.java)
-  - `POST /api/register`
-  - `GET /api/check-login`
-  - `POST /api/logout`
-- 设备状态查询
-  - `GET /api/status`，[DeviceApiController](file:///c:/Program%20Files/iot-onenet-refactor/iot-onenet-refactor/src/main/java/com/aurora/iotonenet/api/controller/DeviceApiController.java)
-- LED 下发
-  - `POST /api/ops/led`，请求体为 `LedOperationRequest`，返回 `LedOperationResponse`
-    - DTO 参考：`src/main/java/com/aurora/iotonenet/api/dto` 目录
-- 健康检查
-  - `GET /api/health`
+视频流：
 
-示例请求：
+- `GET /api/video/streams`
+- `GET /api/video/streams/{streamId}`
+
+AI 检测：
+
+- `POST /api/edge/ai-detections`
+- `GET /api/edge/ai-detections/latest`
+- `GET /api/edge/ai-detections/history?limit=20`
+
+## 前端页面
+
+静态页面位于 `src/main/resources/static`：
+
+- `login.html`
+- `register.html`
+- `index.html`
+- `preview.html`
+- `console/index.html`
+- `console/logs.html`
+- `console/video.html`
+- `console/ai.html`
+
+## Linux 部署
+
+1. 安装 JDK 17 和 Maven。
+2. 拉取代码并进入模块目录。
+3. 通过环境变量或外部配置文件注入 OneNET、Pulsar、登录账号等配置。
+4. 执行打包：
 
 ```bash
-# 查询设备状态
-curl -s http://127.0.0.1:8082/api/status
-
-# 下发 LED 开关
-curl -s -X POST http://127.0.0.1:8082/api/ops/led \
-  -H "Content-Type: application/json" \
-  -d '{"deviceName":"YourDeviceName","led":true}'
+mvn clean package -DskipTests
 ```
 
-## 消息处理与工作流
-- 服务启动后，Pulsar 消费者由 [PulsarConsumerBootstrap](file:///c:/Program%20Files/iot-onenet-refactor/iot-onenet-refactor/src/main/java/com/aurora/iotonenet/bootstrap/PulsarConsumerBootstrap.java) 初始化，线程名 `pulsar-consumer-thread`
-- 主流程见 [IoTPulsarConsumer](file:///c:/Program%20Files/iot-onenet-refactor/iot-onenet-refactor/src/main/java/com/aurora/iotonenet/infrastructure/pulsar/consumer/IoTPulsarConsumer.java)：
-  - 校验 `accessId / secretKey / subscriptionName`
-  - 创建消费者并监听消息
-  - 解密：使用 [AESBase64Utils](file:///c:/Program%20Files/iot-onenet-refactor/iot-onenet-refactor/src/main/java/com/aurora/iotonenet/infrastructure/pulsar/auth/AESBase64Utils.java) 从 `iotMessage.data` 中解密原始报文
-  - 解析：使用 [OriginalMessageParser](file:///c:/Program%20Files/iot-onenet-refactor/iot-onenet-refactor/src/main/java/com/aurora/iotonenet/infrastructure/pulsar/parser/OriginalMessageParser.java) 判定类型为 `PROPERTY_REPORT` 或 `SET_REPLY`
-  - 处理：
-    - `PROPERTY_REPORT` → [DeviceMessageHandler](file:///c:/Program%20Files/iot-onenet-refactor/iot-onenet-refactor/src/main/java/com/aurora/iotonenet/infrastructure/pulsar/handler/DeviceMessageHandler.java) 更新设备状态
-    - `SET_REPLY` → 回填请求结果（根据是否含 `deviceId` 分支）
+5. 后台启动：
 
-- 下发 LED 属性时，[OneNetApiService](file:///c:/Program%20Files/iot-onenet-refactor/iot-onenet-refactor/src/main/java/com/aurora/iotonenet/infrastructure/onenet/OneNetApiService.java) 调用 OneNET `thingmodel/set-device-property` 并解析响应，提取操作 `id` 作为后续 `set_reply` 对应标识
-
-## 目录结构
-```text
-com.aurora.iotonenet
-├── api
-│   ├── controller
-│   ├── dto
-│   └── exception
-├── application
-│   └── service
-├── bootstrap
-├── config
-└── infrastructure
-    ├── onenet
-    └── pulsar
-        ├── auth
-        ├── client
-        ├── consumer
-        ├── handler
-        ├── model
-        └── parser
+```bash
+nohup java -jar target/iot-onenet-refactor-1.0.0.jar > app.log 2>&1 &
 ```
-静态页面位于 `src/main/resources/static`，包含 `login.html / register.html / index.html / preview.html` 等。
 
-## 构建与运行
-- 本地开发：`mvn spring-boot:run`
-- 打包：`mvn clean package -DskipTests`，生成 `target/iot-onenet-refactor-1.0.0.jar`
-- 生产运行建议：
-  - 使用外部化配置文件或环境变量注入密钥
-  - 通过 `--server.port=` 指定端口
-  - 结合进程管理工具（如 systemd / Windows 服务）
+6. 检查服务：
 
-## 安全与跨域
-- 当前安全策略为“全部放行”，详见 [SecurityConfig](file:///c:/Program%20Files/iot-onenet-refactor/iot-onenet-refactor/src/main/java/com/aurora/iotonenet/config/SecurityConfig.java)
-- 控制器已启用 `@CrossOrigin`，允许跨域访问接口
-- 强烈建议在生产环境启用鉴权与更严格的 CORS 策略，并妥善保管授权与密钥
+```bash
+curl http://127.0.0.1:8085/api/health
+```
+
+查看进程：
+
+```bash
+ps -ef | grep iot-onenet-refactor
+```
+
+停止进程：
+
+```bash
+pkill -f 'iot-onenet-refactor-1.0.0.jar'
+```
 
 ## 常见问题
-- 浏览器未自动打开
-  - 检查 `onenet.pulsar.autoOpenDashboard` 或直接访问 `http://127.0.0.1:8082/login.html`
-- Pulsar 鉴权失败
-  - 校验 `accessId / secretKey / subscriptionName` 是否正确、是否有订阅权限
-- OneNET API 401/403
-  - 检查 `authorization` 头与 `product-id` 是否匹配设备
-- 收不到设备上报
-  - 确认设备已接入 OneNET 并将上报消息投递到相应 Pulsar 主题/订阅
 
-## 许可证
-未设置许可证。如需开源或分发，请根据实际需求添加合适的 LICENSE。
+- `401/403`：检查 `ONENET_AUTHORIZATION` 与 `ONENET_PRODUCT_ID` 是否匹配。
+- Pulsar 无法消费：检查 `access id`、`secret key`、订阅名和网络连通性。
+- 登录数据不持久：确认是否已切换到 `APP_USER_STORE_MODE=mysql` 并填写 JDBC 参数。
+- 页面能打开但无数据：优先检查 OneNET 消息是否真正进入 Pulsar，以及应用日志中是否有解析异常。
 
+## 安全说明
+
+- 当前 `SecurityConfig` 基本放行所有接口，适合开发联调，不适合直接作为公网生产配置。
+- 仓库中不应长期保留真实密钥、授权串和数据库口令。
+- 部署到服务器前，建议把敏感配置迁移到环境变量或服务器本地配置文件。

@@ -7,6 +7,7 @@ public class AppProperties {
 
     private final Ai ai = new Ai();
     private final Logs logs = new Logs();
+    private final UserStore userStore = new UserStore();
     private final Video video = new Video();
 
     public Ai getAi() {
@@ -15,6 +16,10 @@ public class AppProperties {
 
     public Logs getLogs() {
         return logs;
+    }
+
+    public UserStore getUserStore() {
+        return userStore;
     }
 
     public Video getVideo() {
@@ -54,10 +59,49 @@ public class AppProperties {
         }
     }
 
+    public static class UserStore {
+        private String mode = "memory";
+        private String jdbcUrl = "";
+        private String username = "";
+        private String password = "";
+
+        public String getMode() {
+            return mode;
+        }
+
+        public void setMode(String mode) {
+            this.mode = mode;
+        }
+
+        public String getJdbcUrl() {
+            return jdbcUrl;
+        }
+
+        public void setJdbcUrl(String jdbcUrl) {
+            this.jdbcUrl = jdbcUrl;
+        }
+
+        public String getUsername() {
+            return username;
+        }
+
+        public void setUsername(String username) {
+            this.username = username;
+        }
+
+        public String getPassword() {
+            return password;
+        }
+
+        public void setPassword(String password) {
+            this.password = password;
+        }
+    }
+
     public static class Video {
         private String defaultStreamId = "k230";
         private String defaultDeviceId = "k230";
-        private String displayName = "K230 实时视频流";
+        private String displayName = "K230 live stream";
         private String gatewayPageUrl = "http://101.35.79.76:1984/";
         private String playerUrl = "http://101.35.79.76:1984/stream.html?src=k230&mode=webrtc,mse";
         private String preferredMode = "webrtc";
