@@ -288,6 +288,7 @@
         }
     </style>
     <link rel="stylesheet" href="/theme-tech-white.css">
+    <script src="/js/csrf.js"></script>
 </head>
 <body class="theme-tech-white page-console-dashboard">
 <div class="bg-grid"></div>
@@ -513,7 +514,7 @@
     });
 
     document.getElementById('logout-btn').addEventListener('click', async () => {
-        await fetch('/api/logout', { method: 'POST' });
+        await fetch('/api/logout', { method: 'POST', headers: await csrfHeaders() });
         window.location.href = '/login.html';
     });
 

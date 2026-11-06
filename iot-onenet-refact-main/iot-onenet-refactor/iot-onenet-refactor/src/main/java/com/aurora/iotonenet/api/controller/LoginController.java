@@ -5,9 +5,10 @@ import com.aurora.iotonenet.api.dto.LoginResponse;
 import com.aurora.iotonenet.api.dto.RegisterRequest;
 import com.aurora.iotonenet.application.service.LoginApplicationService;
 import jakarta.servlet.http.HttpSession;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.security.web.csrf.CsrfToken;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -18,7 +19,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api")
-@CrossOrigin(originPatterns = "*", allowCredentials = "true")
 public class LoginController {
 
     private final LoginApplicationService loginApplicationService;
@@ -28,8 +28,17 @@ public class LoginController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request, HttpSession session) {
-        return ResponseEntity.ok(loginApplicationService.login(request, session));
+    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request, HttpSession session, HttpServletRequest servletRequest) {
+        LoginResponse response = loginApplicationService.login(request, session);
+        if (response.isSuccess()) {
+            servletRequest.changeSessionId();
+        }
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/csrf")
+    public Map<String, String> csrf(CsrfToken token) {
+        return Map.of("headerName", token.getHeaderName(), "token", token.getToken());
     }
 
     @PostMapping("/register")

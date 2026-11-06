@@ -148,6 +148,7 @@
         }
     </style>
     <link rel="stylesheet" href="/theme-tech-white.css">
+    <script src="/js/csrf.js"></script>
 </head>
 <body class="theme-tech-white page-register">
 
@@ -262,7 +263,7 @@
         try {
             const res = await fetch('/api/register', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', ...(await csrfHeaders()) },
                 body: JSON.stringify({ username, password, confirmPassword: confirm })
             });
             const data = await res.json();

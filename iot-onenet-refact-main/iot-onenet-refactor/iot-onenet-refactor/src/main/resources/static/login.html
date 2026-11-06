@@ -187,6 +187,7 @@
         }
     </style>
     <link rel="stylesheet" href="/theme-tech-white.css">
+    <script src="/js/csrf.js"></script>
 </head>
 <body class="theme-tech-white page-login">
 
@@ -298,7 +299,7 @@
             // 这里调用真实的后端登录接口
             const res = await fetch('/api/login', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', ...(await csrfHeaders()) },
                 body: JSON.stringify({ username, password })
             });
             const data = await res.json();
